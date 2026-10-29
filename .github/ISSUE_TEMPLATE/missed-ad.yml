@@ -1,0 +1,31 @@
+name: 广告漏拦
+description: 提交不含敏感信息的广告漏拦线索
+title: "[漏拦] "
+labels: ["missed-ad"]
+body:
+  - type: input
+    id: app-version
+    attributes:
+      label: App、iOS 与 Shadowrocket 版本
+    validations:
+      required: true
+  - type: dropdown
+    id: ad-type
+    attributes:
+      label: 广告类型
+      options: ["开屏", "弹窗", "信息流", "其他"]
+    validations:
+      required: true
+  - type: textarea
+    id: sanitized
+    attributes:
+      label: 脱敏线索
+      description: 只允许主机、无查询参数的路径、时间和规则命中结果。
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 隐私确认
+      options:
+        - label: 我没有提交 Cookie、Token、账号、完整 URL、正文或 HAR。
+          required: true
+

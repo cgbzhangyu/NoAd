@@ -1,0 +1,43 @@
+name: 误拦截报告
+description: 报告正常功能被规则影响；严禁提交敏感数据
+title: "[误拦截] "
+labels: ["false-positive"]
+body:
+  - type: markdown
+    attributes:
+      value: "不要上传 Cookie、Token、Authorization、完整查询参数、请求/响应正文或 HAR。"
+  - type: input
+    id: app-version
+    attributes:
+      label: App 与版本
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: iOS、Shadowrocket 与 NoAd 版本
+    validations:
+      required: true
+  - type: input
+    id: rule
+    attributes:
+      label: 规则 ID
+    validations:
+      required: true
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 现象与复现步骤
+      description: 仅描述功能现象；URL 必须删除查询参数。
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 隐私确认
+      options:
+        - label: 我没有提交 Cookie、Token、账号、请求/响应正文或未脱敏 HAR。
+          required: true
+        - label: 关闭对应模块并重连后，功能恢复。
+          required: true
+

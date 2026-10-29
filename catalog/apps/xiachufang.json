@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "app": {
+    "id": "xiachufang",
+    "name": "下厨房",
+    "critical_flows": ["登录", "首页", "菜谱加载", "搜索", "收藏"]
+  },
+  "rules": [
+    {
+      "id": "xiachufang.ad.api",
+      "tier": "experimental",
+      "section": "URL Rewrite",
+      "match": "^https?:\\/\\/api\\.xiachufang\\.com\\/v\\d+\\/ad\\/",
+      "action": "reject-dict",
+      "purpose": "阻断独立广告 API 路径",
+      "risk": "medium",
+      "source_status": "supported",
+      "device_status": "unverified",
+      "mitm_hosts": ["api.xiachufang.com"],
+      "match_examples": ["https://api.xiachufang.com/v2/ad/splash"],
+      "evidence": [
+        {
+          "project": "blackmatrix7/ios_rule_script",
+          "url": "https://github.com/blackmatrix7/ios_rule_script/blob/master/rewrite/Shadowrocket/Advertising/Advertising.sgmodule",
+          "license": "GPL-2.0-only",
+          "usage": "derived",
+          "notes": "Path-specific rule on a shared API host; kept experimental because MITM is required."
+        }
+      ]
+    }
+  ]
+}
+

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "blackmatrix7-advertising-shadowrocket",
+      "project": "blackmatrix7/ios_rule_script",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rewrite/Shadowrocket/Advertising/Advertising.sgmodule",
+      "license": "GPL-2.0-only",
+      "usage": "derived",
+      "expected_sha256": "1445a30ae3914ac274d2151510d0587121e947f0ec51e1e658d16a1b4c7d0e52",
+      "baseline_checked_at": "2026-10-29",
+      "notes": "Compatible source for conservative URL-pattern candidates. Hash changes require manual review and never auto-promote."
+    },
+    {
+      "id": "blackmatrix7-startup-shadowrocket",
+      "project": "blackmatrix7/ios_rule_script",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/script/startup/startup.sgmodule",
+      "license": "GPL-2.0-only",
+      "usage": "derived",
+      "expected_sha256": "c1ab631cb4b809c25bacc799d8cc74f66da3fa5040c8e7a0a778ad67ea68cb4b",
+      "baseline_checked_at": "2026-10-29",
+      "notes": "Evidence for Bilibili and JD startup endpoints; no third-party script is imported."
+    },
+    {
+      "id": "tartarus-bilibili-evidence",
+      "project": "Tartarus2014/Surge-Script",
+      "url": "https://raw.githubusercontent.com/Tartarus2014/Surge-Script/master/Bilibili.sgmodule",
+      "license": "NOASSERTION",
+      "usage": "evidence-only",
+      "expected_sha256": "c59789ffe2efd0c97fc9ccfb8a4a6dd7efee6c0ac448e54d98d6d2de2a186175",
+      "baseline_checked_at": "2026-10-29",
+      "notes": "Evidence only for the dedicated cm.bilibili.com advertising hostname; no code is copied."
+    }
+  ],
+  "observed_only": [
+    {
+      "project": "TG-Twilight/AWAvenue-Ads-Rule",
+      "license": "GPL-3.0-only",
+      "reason": "License-incompatible with GPL-2.0-only; never merged automatically."
+    },
+    {
+      "project": "fmz200/wool_scripts",
+      "license": "GPL-3.0-only",
+      "reason": "License-incompatible with GPL-2.0-only; never merged automatically."
+    },
+    {
+      "project": "Biliverse/ADBlock",
+      "license": "Apache-2.0",
+      "reason": "Observed for protocol evolution only; no implementation is copied into this GPL-2.0-only repository."
+    }
+  ]
+}
+

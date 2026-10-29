@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Validate catalogs
+        run: python scripts/noad.py validate
+      - name: Check generated modules
+        run: python scripts/noad.py build --check
+      - name: Check generated status and checksums
+        run: |
+          python scripts/noad.py report
+          python scripts/noad.py checksums
+          git diff --exit-code
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+

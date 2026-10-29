@@ -1,0 +1,10 @@
+#!name=NoAd - 下厨房 (Stable)
+#!desc=安全优先的 Shadowrocket 去广告模块；规则状态以仓库报告为准
+#!author=cgbzhangyu
+#!homepage=https://github.com/cgbzhangyu/NoAd
+#!category=广告拦截
+#!system=ios
+#!rule-count=0
+
+[Rule]
+# 当前没有符合稳定版安全门槛的规则

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "rule_id": "replace.with.rule-id",
+  "result": "passed",
+  "tested_at": "2026-10-29T00:00:00+08:00",
+  "device": {
+    "model": "iPhone model",
+    "ios_version": "version",
+    "shadowrocket_version": "2.2.92",
+    "app_version": "version"
+  },
+  "checks": {
+    "module_import": "passed",
+    "ad_target": "passed",
+    "critical_flows": "passed",
+    "disable_restores_baseline": "passed"
+  },
+  "privacy": {
+    "contains_headers": false,
+    "contains_query_values": false,
+    "contains_bodies": false,
+    "contains_identifiers": false
+  },
+  "notes": "Do not include account data or full request URLs."
+}
+

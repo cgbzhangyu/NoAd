@@ -1,0 +1,81 @@
+name: Promote stable release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Semantic version without v prefix"
+        required: true
+        type: string
+      source_ref:
+        description: "Reviewed main commit or tag"
+        required: true
+        default: "main"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: stable
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Validate and test
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          python -c "import os,re,sys; sys.exit(0 if re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?', os.environ['VERSION']) else 1)"
+          python scripts/noad.py validate
+          python scripts/noad.py build --check
+          python -m unittest discover -s tests -v
+          python scripts/noad.py check-promotion
+          python scripts/noad.py checksums
+      - name: Capture reviewed source commit
+        id: source
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Publish stable branch without rewriting history
+        id: publish
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch origin stable:stable; then
+            git switch stable
+          else
+            git switch --orphan stable
+            git rm -rf .
+          fi
+          git rm -r --ignore-unmatch dist/stable
+          mkdir -p dist/stable
+          for file in all bilibili xiachufang taobao jd smzdm; do
+            git show "$SOURCE_SHA:dist/canary/$file.sgmodule" > "dist/stable/$file.sgmodule"
+          done
+          git checkout "$SOURCE_SHA" -- dist/status.json dist/SHA256SUMS README.md LICENSE CHANGELOG.md
+          git add dist/stable dist/status.json dist/SHA256SUMS README.md LICENSE CHANGELOG.md
+          git commit -m "release: promote v$VERSION from $SOURCE_SHA"
+          git push origin stable
+          echo "stable_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Create immutable GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STABLE_SHA: ${{ steps.publish.outputs.stable_sha }}
+          VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          git switch --detach "$STABLE_SHA"
+          git tag -a "v$VERSION" "$STABLE_SHA" -m "NoAd v$VERSION"
+          git push origin "v$VERSION"
+          gh release create "v$VERSION" dist/stable/*.sgmodule dist/status.json dist/SHA256SUMS --target "$STABLE_SHA" --generate-notes --verify-tag
+

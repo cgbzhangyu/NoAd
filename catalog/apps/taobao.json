@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "app": {
+    "id": "taobao",
+    "name": "淘宝",
+    "critical_flows": ["登录", "搜索", "商品详情", "购物车", "优惠券", "订单", "支付"]
+  },
+  "rules": [
+    {
+      "id": "taobao.advertisementservice.getadv",
+      "tier": "experimental",
+      "section": "URL Rewrite",
+      "match": "^https?:\\/\\/acs\\.m\\.taobao\\.com\\/gw\\/mtop\\.alibaba\\.advertisementservice\\.getadv(?:\\/|\\?|$)",
+      "action": "reject-dict",
+      "purpose": "阻断明确命名的广告服务接口；不宣称覆盖开屏",
+      "risk": "high",
+      "source_status": "supported",
+      "device_status": "unverified",
+      "mitm_hosts": ["acs.m.taobao.com"],
+      "match_examples": [
+        "https://acs.m.taobao.com/gw/mtop.alibaba.advertisementservice.getadv/1.0/?data=REDACTED"
+      ],
+      "evidence": [
+        {
+          "project": "blackmatrix7/ios_rule_script",
+          "url": "https://github.com/blackmatrix7/ios_rule_script/blob/master/rewrite/Shadowrocket/Advertising/Advertising.sgmodule",
+          "license": "GPL-2.0-only",
+          "usage": "derived",
+          "notes": "Shared Alibaba API host; requires full shopping-flow regression before promotion."
+        }
+      ]
+    }
+  ]
+}
+

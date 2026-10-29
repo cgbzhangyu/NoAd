@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "app": {
+    "id": "smzdm",
+    "name": "什么值得买",
+    "critical_flows": ["登录", "首页", "好价", "搜索", "详情", "评论"]
+  },
+  "rules": [
+    {
+      "id": "smzdm.third-ad",
+      "tier": "experimental",
+      "section": "URL Rewrite",
+      "match": "^https?:\\/\\/s\\d+\\.zdmimg\\.com\\/www\\/api\\/v\\d+\\/api\\/thirdAd\\.php(?:\\?|$)",
+      "action": "reject-dict",
+      "purpose": "阻断第三方广告接口",
+      "risk": "high",
+      "source_status": "supported",
+      "device_status": "unverified",
+      "mitm_hosts": ["s*.zdmimg.com"],
+      "match_examples": ["https://s3.zdmimg.com/www/api/v1/api/thirdAd.php?position=home"],
+      "evidence": [
+        {
+          "project": "blackmatrix7/ios_rule_script",
+          "url": "https://github.com/blackmatrix7/ios_rule_script/blob/master/rewrite/Shadowrocket/Advertising/Advertising.sgmodule",
+          "license": "GPL-2.0-only",
+          "usage": "derived",
+          "notes": "Bounded wildcard is limited to zdmimg.com but still decrypts matching media hosts; keep experimental."
+        }
+      ]
+    }
+  ]
+}
+

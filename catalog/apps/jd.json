@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "app": {
+    "id": "jd",
+    "name": "京东",
+    "critical_flows": ["登录", "搜索", "商品详情", "购物车", "优惠券", "订单", "支付"]
+  },
+  "rules": [
+    {
+      "id": "jd.launch.client-action",
+      "tier": "experimental",
+      "section": "URL Rewrite",
+      "match": "^https?:\\/\\/api\\.m\\.jd\\.com\\/client\\.action\\?functionId=(?:home_launchConfig|start)(?:&|$)",
+      "action": "reject-dict",
+      "purpose": "阻断公开来源记录的开屏配置接口",
+      "risk": "high",
+      "source_status": "supported",
+      "device_status": "unverified",
+      "mitm_hosts": ["api.m.jd.com"],
+      "match_examples": [
+        "https://api.m.jd.com/client.action?functionId=start&client=apple",
+        "https://api.m.jd.com/client.action?functionId=home_launchConfig"
+      ],
+      "evidence": [
+        {
+          "project": "blackmatrix7/ios_rule_script",
+          "url": "https://github.com/blackmatrix7/ios_rule_script/blob/master/rewrite/Shadowrocket/Advertising/Advertising.sgmodule",
+          "license": "GPL-2.0-only",
+          "usage": "derived",
+          "notes": "Shared JD API host; exact functionId matching is mandatory."
+        }
+      ]
+    },
+    {
+      "id": "jd.adx.hosts",
+      "tier": "experimental",
+      "section": "URL Rewrite",
+      "match": "^https?:\\/\\/(?:bdsp-x|dsp-x)\\.jd\\.com\\/adx\\/",
+      "action": "reject",
+      "purpose": "阻断京东广告交换路径",
+      "risk": "medium",
+      "source_status": "supported",
+      "device_status": "unverified",
+      "mitm_hosts": ["bdsp-x.jd.com", "dsp-x.jd.com"],
+      "match_examples": ["https://dsp-x.jd.com/adx/request"],
+      "evidence": [
+        {
+          "project": "blackmatrix7/ios_rule_script",
+          "url": "https://github.com/blackmatrix7/ios_rule_script/blob/master/rewrite/Shadowrocket/Advertising/Advertising.sgmodule",
+          "license": "GPL-2.0-only",
+          "usage": "derived",
+          "notes": "The upstream rule is path-scoped; NoAd intentionally does not reject the whole host."
+        }
+      ]
+    }
+  ]
+}
+

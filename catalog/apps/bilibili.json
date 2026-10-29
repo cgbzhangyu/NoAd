@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "app": {
+    "id": "bilibili",
+    "name": "哔哩哔哩",
+    "critical_flows": ["登录", "视频播放", "弹幕", "评论", "搜索", "直播"]
+  },
+  "rules": [
+    {
+      "id": "bilibili.domain.cm",
+      "tier": "stable",
+      "section": "Rule",
+      "directive": "DOMAIN",
+      "match": "cm.bilibili.com",
+      "action": "REJECT",
+      "purpose": "拦截独立商业广告主机",
+      "risk": "low",
+      "source_status": "supported",
+      "device_status": "unverified",
+      "evidence": [
+        {
+          "project": "Tartarus2014/Surge-Script",
+          "url": "https://github.com/Tartarus2014/Surge-Script/blob/master/Bilibili.sgmodule",
+          "license": "NOASSERTION",
+          "usage": "evidence-only",
+          "notes": "Hostname fact independently represented; no source code copied."
+        }
+      ]
+    },
+    {
+      "id": "bilibili.splash.v2",
+      "tier": "experimental",
+      "section": "URL Rewrite",
+      "match": "^https?:\\/\\/app\\.bilibili\\.com\\/x\\/v2\\/splash\\/(?:show|list)(?:\\?|$)",
+      "action": "reject-dict",
+      "purpose": "阻断 v2 开屏广告配置响应",
+      "risk": "medium",
+      "source_status": "supported",
+      "device_status": "unverified",
+      "mitm_hosts": ["app.bilibili.com"],
+      "match_examples": [
+        "https://app.bilibili.com/x/v2/splash/show?access_key=REDACTED",
+        "https://app.bilibili.com/x/v2/splash/list"
+      ],
+      "evidence": [
+        {
+          "project": "blackmatrix7/ios_rule_script",
+          "url": "https://github.com/blackmatrix7/ios_rule_script/blob/master/script/startup/startup.sgmodule",
+          "license": "GPL-2.0-only",
+          "usage": "derived",
+          "notes": "Only the endpoint pattern is retained; the upstream response script is not imported."
+        }
+      ]
+    }
+  ]
+}
+
