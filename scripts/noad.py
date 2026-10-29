@@ -250,7 +250,7 @@ def validate_catalogs(
 
 
 def _header(name: str, tier: str, rule_count: int) -> list[str]:
-    label = "Stable" if tier == "stable" else "Experimental / MITM Required"
+    label = "Safe / No MITM" if tier == "stable" else "Experimental / MITM Required"
     return [
         f"#!name=NoAd - {name} ({label})",
         "#!desc=安全优先的 Shadowrocket 去广告模块；规则状态以仓库报告为准",
@@ -510,7 +510,11 @@ def audit_sources(output: Path) -> int:
         "results": results,
         "changed": changed,
     }
-    output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    output.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
     print(json.dumps(report, ensure_ascii=False, indent=2))
     if changed:
         return 2
@@ -568,7 +572,11 @@ def command_report(output: Path) -> int:
         return 1
     report = validation_report(catalogs)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    output.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
     print(f"Wrote {output.relative_to(ROOT)}")
     return 0
 

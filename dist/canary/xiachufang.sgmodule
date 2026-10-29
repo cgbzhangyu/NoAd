@@ -1,4 +1,4 @@
-#!name=NoAd - 下厨房 (Stable)
+#!name=NoAd - 下厨房 (Safe / No MITM)
 #!desc=安全优先的 Shadowrocket 去广告模块；规则状态以仓库报告为准
 #!author=cgbzhangyu
 #!homepage=https://github.com/cgbzhangyu/NoAd
