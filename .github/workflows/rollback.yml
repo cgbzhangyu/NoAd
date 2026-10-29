@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   rollback:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: stable
     steps:
       - uses: actions/checkout@v7
