@@ -38,7 +38,7 @@ jobs:
           if [ "$existing" = "0" ]; then
             gh issue create --title "$title" --body "定期审计返回代码 $AUDIT_CODE。请下载本次 workflow 的 source-audit artifact，人工检查许可证、规则差异和误杀风险。此工作流不会自动覆盖稳定版。"
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: source-audit
