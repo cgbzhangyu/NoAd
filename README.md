@@ -44,7 +44,7 @@ Shadowrocket 保持全局路由为“配置”。不要下载或替换完整 `.c
 2. 点击右上角 `+`，粘贴以下远程模块地址：
 
    ```text
-   https://raw.githubusercontent.com/cgbzhangyu/NoAd/main/dist/canary/all.sgmodule
+   https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/dist/canary/all.sgmodule
    ```
 
 3. 下载并启用模块，重新连接 Shadowrocket。
@@ -60,7 +60,7 @@ jd.sgmodule
 smzdm.sgmodule
 ```
 
-它们与合集位于同一 `dist/canary/` 目录。完成真机验收后，正式稳定地址改为 `https://raw.githubusercontent.com/cgbzhangyu/NoAd/stable/dist/stable/all.sgmodule`。
+它们与合集位于同一 `dist/canary/` 目录。完成真机验收后，正式稳定地址改为 `https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/stable/dist/stable/all.sgmodule`。
 
 ### 实验模块
 
