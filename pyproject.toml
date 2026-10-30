@@ -1,7 +1,7 @@
 [project]
 name = "noad"
 version = "0.1.0"
-description = "Safety-first Shadowrocket ad-blocking module builder"
+description = "App-specific Shadowrocket HTTPS ad-rule module builder"
 requires-python = ">=3.11"
 license = { text = "GPL-2.0-only" }
 

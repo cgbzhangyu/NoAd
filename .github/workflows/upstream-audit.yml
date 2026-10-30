@@ -36,7 +36,7 @@ jobs:
           title="[上游审计] 公开规则源变化或不可用"
           existing=$(gh issue list --state open --search "$title in:title" --json number --jq 'length')
           if [ "$existing" = "0" ]; then
-            gh issue create --title "$title" --body "定期审计返回代码 $AUDIT_CODE。请下载本次 workflow 的 source-audit artifact，人工检查许可证、规则差异和误杀风险。此工作流不会自动覆盖稳定版。"
+            gh issue create --title "$title" --body "定期审计返回代码 $AUDIT_CODE。请下载本次 workflow 的 source-audit artifact，人工检查许可证、规则差异和误杀风险。此工作流不会自动修改 App 模块。"
           fi
       - uses: actions/upload-artifact@v7
         if: always()

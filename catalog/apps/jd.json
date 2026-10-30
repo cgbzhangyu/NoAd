@@ -8,7 +8,6 @@
   "rules": [
     {
       "id": "jd.launch.client-action",
-      "tier": "experimental",
       "section": "URL Rewrite",
       "match": "^https?:\\/\\/api\\.m\\.jd\\.com\\/client\\.action\\?functionId=(?:home_launchConfig|start)(?:&|$)",
       "action": "reject-dict",
@@ -33,7 +32,6 @@
     },
     {
       "id": "jd.adx.hosts",
-      "tier": "experimental",
       "section": "URL Rewrite",
       "match": "^https?:\\/\\/(?:bdsp-x|dsp-x)\\.jd\\.com\\/adx\\/",
       "action": "reject",

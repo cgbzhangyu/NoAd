@@ -1,13 +1,13 @@
-#!name=NoAd - 下厨房 (Experimental / MITM Required)
-#!desc=安全优先的 Shadowrocket 去广告模块；规则状态以仓库报告为准
+#!name=NoAd - 下厨房 (App-specific / MITM Required)
+#!desc=仅处理目标 App 的精确 HTTPS 广告接口；通用广告请直接引用上游规则集
 #!author=cgbzhangyu
 #!homepage=https://github.com/cgbzhangyu/NoAd
 #!category=广告拦截
 #!system=ios
 #!rule-count=1
 
-# WARNING: 本模块需要 HTTPS 解密，默认不得启用。
-# 仅在阅读风险说明并准备完成真机回归后安装。
+# WARNING: 本模块需要 HTTPS 解密和系统信任 Shadowrocket CA。
+# 仅解密下方 [MITM] 中列出的目标 App 主机。
 
 [URL Rewrite]
 # xiachufang.ad.api | 阻断独立广告 API 路径 | risk=medium | device=unverified

@@ -1,6 +1,0 @@
-{
-  "schema_version": 1,
-  "description": "Rule IDs listed here are omitted at build time. This preserves the user's existing routing policy instead of forcing DIRECT.",
-  "disabled_rule_ids": []
-}
-

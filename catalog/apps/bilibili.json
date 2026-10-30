@@ -7,29 +7,7 @@
   },
   "rules": [
     {
-      "id": "bilibili.domain.cm",
-      "tier": "stable",
-      "section": "Rule",
-      "directive": "DOMAIN",
-      "match": "cm.bilibili.com",
-      "action": "REJECT",
-      "purpose": "拦截独立商业广告主机",
-      "risk": "low",
-      "source_status": "supported",
-      "device_status": "unverified",
-      "evidence": [
-        {
-          "project": "Tartarus2014/Surge-Script",
-          "url": "https://github.com/Tartarus2014/Surge-Script/blob/master/Bilibili.sgmodule",
-          "license": "NOASSERTION",
-          "usage": "evidence-only",
-          "notes": "Hostname fact independently represented; no source code copied."
-        }
-      ]
-    },
-    {
       "id": "bilibili.splash.v2",
-      "tier": "experimental",
       "section": "Script",
       "match": "^https?:\\/\\/app\\.bilibili\\.com\\/x\\/v2\\/splash\\/(?:show|list)(?:\\?|$)",
       "action": "http-response",

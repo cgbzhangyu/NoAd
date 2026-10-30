@@ -9,16 +9,28 @@
 
 ## 广告仍然出现
 
-- 确认全局路由为“配置”，模块已启用且 Shadowrocket 已重新连接。
+- 确认全局路由为“配置”，App 模块已启用，HTTPS 解密已打开，证书已安装并被 iOS 完全信任。
+- 更新模块后重新连接 Shadowrocket；旧模块地址位于 `dist/experimental/` 时，应删除后改用 `dist/apps/` 新地址。
 - 开屏素材可能已经缓存；先连续冷启动观察，再使用 App 自带缓存清理。
-- 哔哩哔哩代理日志应出现完整的 `/x/v2/splash/show` 或 `/x/v2/splash/list` HTTPS 路径；如果仍命中旧的 `REJECT-DICT`，说明 Shadowrocket 仍在使用旧模块缓存，请更新模块并重新连接。
-- 稳定版覆盖有限是设计选择，不要把共享业务域名整体加入 `REJECT`。
-- 未命中的新接口只能作为候选规则，在公开来源或脱敏日志支持后进入实验层。
+- 哔哩哔哩日志应出现 `/x/v2/splash/show` 或 `/x/v2/splash/list`，并命中 `NoAd_BiliBili_开屏广告清理`。
+- 如果广告一直是同一张，通常说明旧素材仍在 App 本地缓存，或接口没有命中新脚本；不要扩大到整个共享业务域名。
+- 新接口只有在公开来源或脱敏日志支持后，才能加入对应 App 目录。
+
+## 通用规则未命中
+
+确认 `[Rule]` 使用的是：
+
+```ini
+RULE-SET,<Advertising.list URL>,REJECT
+DOMAIN-SET,<Advertising_Domain.list URL>,REJECT
+```
+
+不要把两个类型写反，也不要把它们作为模块导入。
 
 ## 安全日志格式
 
 ```text
-time=2026-10-29T20:00:00+08:00
+time=2026-10-30T20:00:00+08:00
 app=jd
 app_version=<version>
 host=api.m.jd.com
@@ -30,7 +42,5 @@ result=<blocked|not-matched|business-failure>
 
 ## 回滚
 
-- 紧急回退：关闭或删除对应模块，不会删除现有节点和代理订阅。
-- 版本回退：改用上一 GitHub Release 的不可变模块链接。
-- 稳定通道回退：维护者通过回滚工作流重新发布历史 tag 的产物，禁止强推 `stable`。
-
+- 紧急回退：关闭或删除对应 App 模块，不会删除现有节点和代理订阅。
+- 版本回退：使用上一 commit 或 tag 的不可变 `raw.githubusercontent.com` 地址。

@@ -8,7 +8,6 @@
   "rules": [
     {
       "id": "taobao.advertisementservice.getadv",
-      "tier": "experimental",
       "section": "URL Rewrite",
       "match": "^https?:\\/\\/acs\\.m\\.taobao\\.com\\/gw\\/mtop\\.alibaba\\.advertisementservice\\.getadv(?:\\/|\\?|$)",
       "action": "reject-dict",
@@ -26,7 +25,7 @@
           "url": "https://github.com/blackmatrix7/ios_rule_script/blob/master/rewrite/Shadowrocket/Advertising/Advertising.sgmodule",
           "license": "GPL-2.0-only",
           "usage": "derived",
-          "notes": "Shared Alibaba API host; requires full shopping-flow regression before promotion."
+          "notes": "Shared Alibaba API host; requires full shopping-flow regression."
         }
       ]
     }

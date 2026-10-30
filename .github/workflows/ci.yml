@@ -20,11 +20,8 @@ jobs:
         run: python scripts/noad.py validate
       - name: Check generated modules
         run: python scripts/noad.py build --check
-      - name: Check generated status and checksums
-        run: |
-          python scripts/noad.py report
-          python scripts/noad.py checksums
-          git diff --exit-code
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
+      - name: Confirm generated files are committed
+        run: git diff --exit-code
 

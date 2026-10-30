@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Build, validate and audit NoAd Shadowrocket modules.
-
-The tool intentionally uses only Python's standard library. It validates the
-project's own conservative subset of Shadowrocket module syntax; passing this
-validator is not equivalent to a successful import on a real iPhone.
-"""
+"""Build, validate and audit app-specific NoAd Shadowrocket modules."""
 
 from __future__ import annotations
 
@@ -23,15 +18,11 @@ from typing import Any, Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_DIR = ROOT / "catalog" / "apps"
-ALLOWLIST_FILE = ROOT / "catalog" / "allowlist.json"
 SOURCES_FILE = ROOT / "catalog" / "sources.json"
-DIST_DIR = ROOT / "dist"
+DIST_DIR = ROOT / "dist" / "apps"
 
 APP_ORDER = ("bilibili", "xiachufang", "taobao", "jd", "smzdm")
-TIERS = {"stable", "experimental"}
-SECTIONS = {"Rule", "URL Rewrite", "Script"}
-SAFE_RULE_DIRECTIVES = {"DOMAIN"}
-SAFE_ACTIONS = {"REJECT"}
+SECTIONS = {"URL Rewrite", "Script"}
 REWRITE_ACTIONS = {"reject", "reject-200", "reject-dict", "reject-array"}
 SCRIPT_ACTIONS = {"http-response"}
 OWNED_SCRIPT_PREFIX = (
@@ -80,23 +71,11 @@ def read_json(path: Path) -> Any:
         return json.load(handle)
 
 
-def canonical_json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-
-
 def load_catalogs(catalog_dir: Path = CATALOG_DIR) -> list[AppCatalog]:
-    catalogs: list[AppCatalog] = []
-    for path in sorted(catalog_dir.glob("*.json")):
-        catalogs.append(AppCatalog(path=path, data=read_json(path)))
-    return catalogs
-
-
-def load_disabled_rule_ids(path: Path = ALLOWLIST_FILE) -> set[str]:
-    data = read_json(path)
-    values = data.get("disabled_rule_ids", [])
-    if not isinstance(values, list) or not all(isinstance(item, str) for item in values):
-        raise ValidationError(f"{path}: disabled_rule_ids must be a string array")
-    return set(values)
+    return [
+        AppCatalog(path=path, data=read_json(path))
+        for path in sorted(catalog_dir.glob("*.json"))
+    ]
 
 
 def _require(mapping: dict[str, Any], keys: Iterable[str], context: str) -> None:
@@ -124,19 +103,34 @@ def _validate_evidence(rule: dict[str, Any], context: str) -> None:
             raise ValidationError(f"{item_context}: evidence URL must use HTTPS")
 
 
-def validate_catalogs(
-    catalogs: list[AppCatalog], disabled_rule_ids: set[str]
-) -> list[str]:
+def _validate_mitm_hosts(rule: dict[str, Any], context: str) -> None:
+    hosts = rule.get("mitm_hosts")
+    if not isinstance(hosts, list) or not hosts:
+        raise ValidationError(f"{context}: app rule requires MITM hosts")
+    for host in hosts:
+        if not isinstance(host, str) or not host:
+            raise ValidationError(f"{context}: invalid MITM host")
+        if host in BANNED_MITM_HOSTS:
+            raise ValidationError(f"{context}: unsafe MITM host {host}")
+        if any(token in host.lower() for token in SENSITIVE_TOKENS):
+            raise ValidationError(f"{context}: sensitive MITM host {host}")
+
+
+def _validate_match(rule: dict[str, Any], context: str) -> None:
+    re.compile(rule["match"])
+    examples = rule.get("match_examples")
+    if not isinstance(examples, list) or not examples:
+        raise ValidationError(f"{context}: match_examples must be non-empty")
+    for example in examples:
+        if re.search(rule["match"], example) is None:
+            raise ValidationError(f"{context}: regex does not match example {example}")
+
+
+def validate_catalogs(catalogs: list[AppCatalog]) -> list[str]:
     errors: list[str] = []
     seen_apps: set[str] = set()
     seen_rules: dict[str, str] = {}
-    seen_matches: dict[tuple[str, str, str], tuple[str, str]] = {}
-
-    def capture(callable_: Any) -> None:
-        try:
-            callable_()
-        except (ValidationError, re.error) as exc:
-            errors.append(str(exc))
+    seen_matches: dict[tuple[str, str], tuple[str, str]] = {}
 
     for catalog in catalogs:
         path = catalog.path
@@ -154,8 +148,8 @@ def validate_catalogs(
                 raise ValidationError(f"{path}: filename must equal app id")
             if not isinstance(app["critical_flows"], list) or not app["critical_flows"]:
                 raise ValidationError(f"{path}.app: critical_flows must be non-empty")
-            if not isinstance(data["rules"], list):
-                raise ValidationError(f"{path}: rules must be an array")
+            if not isinstance(data["rules"], list) or not data["rules"]:
+                raise ValidationError(f"{path}: rules must be a non-empty array")
         except ValidationError as exc:
             errors.append(str(exc))
             continue
@@ -167,7 +161,6 @@ def validate_catalogs(
                     rule,
                     (
                         "id",
-                        "tier",
                         "section",
                         "match",
                         "action",
@@ -175,6 +168,8 @@ def validate_catalogs(
                         "risk",
                         "source_status",
                         "device_status",
+                        "mitm_hosts",
+                        "match_examples",
                         "evidence",
                     ),
                     context,
@@ -187,8 +182,6 @@ def validate_catalogs(
                 seen_rules[rule_id] = context
                 if not rule_id.startswith(f"{catalog.app_id}."):
                     raise ValidationError(f"{context}: rule id must start with app id")
-                if rule["tier"] not in TIERS:
-                    raise ValidationError(f"{context}: invalid tier")
                 if rule["section"] not in SECTIONS:
                     raise ValidationError(f"{context}: invalid section")
                 if rule["source_status"] not in {"supported", "candidate", "retired"}:
@@ -198,39 +191,13 @@ def validate_catalogs(
                 if rule["risk"] not in {"low", "medium", "high"}:
                     raise ValidationError(f"{context}: invalid risk")
                 _validate_evidence(rule, context)
+                _validate_mitm_hosts(rule, context)
+                _validate_match(rule, context)
 
-                if rule["section"] == "Rule":
-                    _require(rule, ("directive",), context)
-                    if rule["directive"] not in SAFE_RULE_DIRECTIVES:
-                        raise ValidationError(f"{context}: unsupported Rule directive")
-                    if rule["action"] not in SAFE_ACTIONS:
-                        raise ValidationError(f"{context}: unsupported Rule action")
-                    if rule["tier"] != "stable":
-                        raise ValidationError(f"{context}: Rule entries belong in stable tier")
-                    if rule.get("mitm_hosts"):
-                        raise ValidationError(f"{context}: stable rule cannot declare MITM")
-                elif rule["section"] == "URL Rewrite":
-                    if rule["tier"] != "experimental":
-                        raise ValidationError(f"{context}: rewrites must be experimental")
+                if rule["section"] == "URL Rewrite":
                     if rule["action"] not in REWRITE_ACTIONS:
                         raise ValidationError(f"{context}: unsupported rewrite action")
-                    hosts = rule.get("mitm_hosts")
-                    if not isinstance(hosts, list) or not hosts:
-                        raise ValidationError(f"{context}: rewrite requires MITM hosts")
-                    for host in hosts:
-                        if host in BANNED_MITM_HOSTS:
-                            raise ValidationError(f"{context}: unsafe MITM host {host}")
-                        if any(token in host.lower() for token in SENSITIVE_TOKENS):
-                            raise ValidationError(f"{context}: sensitive MITM host {host}")
-                    re.compile(rule["match"])
-                    for example in rule.get("match_examples", []):
-                        if re.search(rule["match"], example) is None:
-                            raise ValidationError(
-                                f"{context}: regex does not match example {example}"
-                            )
                 else:
-                    if rule["tier"] != "experimental":
-                        raise ValidationError(f"{context}: scripts must be experimental")
                     if rule["action"] not in SCRIPT_ACTIONS:
                         raise ValidationError(f"{context}: unsupported script action")
                     _require(
@@ -256,30 +223,17 @@ def validate_catalogs(
                         or isinstance(rule["max_size"], bool)
                         or rule["max_size"] <= 0
                     ):
-                        raise ValidationError(f"{context}: max_size must be a positive integer")
-                    hosts = rule.get("mitm_hosts")
-                    if not isinstance(hosts, list) or not hosts:
-                        raise ValidationError(f"{context}: script requires MITM hosts")
-                    for host in hosts:
-                        if host in BANNED_MITM_HOSTS:
-                            raise ValidationError(f"{context}: unsafe MITM host {host}")
-                        if any(token in host.lower() for token in SENSITIVE_TOKENS):
-                            raise ValidationError(f"{context}: sensitive MITM host {host}")
-                    re.compile(rule["match"])
-                    for example in rule.get("match_examples", []):
-                        if re.search(rule["match"], example) is None:
-                            raise ValidationError(
-                                f"{context}: regex does not match example {example}"
-                            )
+                        raise ValidationError(
+                            f"{context}: max_size must be a positive integer"
+                        )
 
-                signature = (rule["tier"], rule["section"], rule["match"])
+                signature = (rule["section"], rule["match"])
                 previous = seen_matches.get(signature)
-                if previous and previous[1] != rule["action"]:
+                if previous:
+                    detail = "conflicts with" if previous[1] != rule["action"] else "duplicates"
                     raise ValidationError(
-                        f"{context}: action conflicts with {previous[0]} for same match"
+                        f"{context}: {detail} {previous[0]} for the same match"
                     )
-                if previous and previous[1] == rule["action"]:
-                    raise ValidationError(f"{context}: duplicate match from {previous[0]}")
                 seen_matches[signature] = (rule_id, rule["action"])
             except (ValidationError, re.error) as exc:
                 errors.append(str(exc))
@@ -290,17 +244,13 @@ def validate_catalogs(
         errors.append(f"missing app catalogs: {', '.join(sorted(missing_apps))}")
     if extra_apps:
         errors.append(f"unknown app catalogs: {', '.join(sorted(extra_apps))}")
-    unknown_disabled = disabled_rule_ids - set(seen_rules)
-    if unknown_disabled:
-        errors.append(f"allowlist references unknown rules: {', '.join(sorted(unknown_disabled))}")
     return errors
 
 
-def _header(name: str, tier: str, rule_count: int) -> list[str]:
-    label = "Safe / No MITM" if tier == "stable" else "Experimental / MITM Required"
+def _header(name: str, rule_count: int) -> list[str]:
     return [
-        f"#!name=NoAd - {name} ({label})",
-        "#!desc=安全优先的 Shadowrocket 去广告模块；规则状态以仓库报告为准",
+        f"#!name=NoAd - {name} (App-specific / MITM Required)",
+        "#!desc=仅处理目标 App 的精确 HTTPS 广告接口；通用广告请直接引用上游规则集",
         "#!author=cgbzhangyu",
         "#!homepage=https://github.com/cgbzhangyu/NoAd",
         "#!category=广告拦截",
@@ -310,82 +260,51 @@ def _header(name: str, tier: str, rule_count: int) -> list[str]:
     ]
 
 
-def render_module(
-    name: str,
-    tier: str,
-    rules: list[dict[str, Any]],
-    disabled_rule_ids: set[str],
-) -> str:
-    active = [rule for rule in rules if rule["tier"] == tier and rule["id"] not in disabled_rule_ids]
-    lines = _header(name, tier, len(active))
-    if tier == "stable":
-        lines.append("[Rule]")
-        if not active:
-            lines.append("# 当前没有符合稳定版安全门槛的规则")
-        for rule in active:
-            lines.append(f"# {rule['id']} | {rule['purpose']} | device={rule['device_status']}")
+def render_module(name: str, rules: list[dict[str, Any]]) -> str:
+    lines = _header(name, len(rules))
+    lines.extend(
+        [
+            "# WARNING: 本模块需要 HTTPS 解密和系统信任 Shadowrocket CA。",
+            "# 仅解密下方 [MITM] 中列出的目标 App 主机。",
+        ]
+    )
+    rewrites = [rule for rule in rules if rule["section"] == "URL Rewrite"]
+    scripts = [rule for rule in rules if rule["section"] == "Script"]
+    if rewrites:
+        lines.extend(["", "[URL Rewrite]"])
+        for rule in rewrites:
             lines.append(
-                f"{rule['directive']},{rule['match']},{rule['action']}"
+                f"# {rule['id']} | {rule['purpose']} | risk={rule['risk']} | device={rule['device_status']}"
             )
-    else:
-        lines.extend(
-            [
-                "# WARNING: 本模块需要 HTTPS 解密，默认不得启用。",
-                "# 仅在阅读风险说明并准备完成真机回归后安装。",
-            ]
-        )
-        if not active:
-            lines.extend(["", "[URL Rewrite]", "# 当前没有实验规则"])
-        rewrites = [rule for rule in active if rule["section"] == "URL Rewrite"]
-        scripts = [rule for rule in active if rule["section"] == "Script"]
-        if rewrites:
-            lines.extend(["", "[URL Rewrite]"])
-            for rule in rewrites:
-                lines.append(
-                    f"# {rule['id']} | {rule['purpose']} | risk={rule['risk']} | device={rule['device_status']}"
-                )
-                lines.append(f"{rule['match']} - {rule['action']}")
-        if scripts:
-            lines.extend(["", "[Script]"])
-            for rule in scripts:
-                lines.append(
-                    f"# {rule['id']} | {rule['purpose']} | risk={rule['risk']} | device={rule['device_status']}"
-                )
-                lines.append(
-                    f"{rule['script_name']} = type={rule['action']},"
-                    f"requires-body={1 if rule['requires_body'] else 0},"
-                    f"max-size={rule['max_size']},pattern={rule['match']},"
-                    f"script-path={rule['script_path']}"
-                )
-        hosts = sorted({host for rule in active for host in rule.get("mitm_hosts", [])})
-        if hosts:
-            lines.extend(["", "[MITM]", f"hostname = %APPEND% {','.join(hosts)}"])
+            lines.append(f"{rule['match']} - {rule['action']}")
+    if scripts:
+        lines.extend(["", "[Script]"])
+        for rule in scripts:
+            lines.append(
+                f"# {rule['id']} | {rule['purpose']} | risk={rule['risk']} | device={rule['device_status']}"
+            )
+            lines.append(
+                f"{rule['script_name']} = type={rule['action']},"
+                f"requires-body={1 if rule['requires_body'] else 0},"
+                f"max-size={rule['max_size']},pattern={rule['match']},"
+                f"script-path={rule['script_path']}"
+            )
+    hosts = sorted({host for rule in rules for host in rule["mitm_hosts"]})
+    lines.extend(["", "[MITM]", f"hostname = %APPEND% {','.join(hosts)}"])
     return "\n".join(lines).rstrip() + "\n"
 
 
-def build_outputs(
-    catalogs: list[AppCatalog], disabled_rule_ids: set[str]
-) -> dict[Path, str]:
-    outputs: dict[Path, str] = {}
-    all_rules: list[dict[str, Any]] = []
+def build_outputs(catalogs: list[AppCatalog]) -> dict[Path, str]:
     by_id = {catalog.app_id: catalog for catalog in catalogs}
-    for app_id in APP_ORDER:
-        catalog = by_id[app_id]
-        all_rules.extend(catalog.rules)
-        outputs[DIST_DIR / "canary" / f"{app_id}.sgmodule"] = render_module(
-            catalog.name, "stable", catalog.rules, disabled_rule_ids
+    return {
+        DIST_DIR / f"{app_id}.sgmodule": render_module(
+            by_id[app_id].name, by_id[app_id].rules
         )
-        outputs[DIST_DIR / "experimental" / f"{app_id}.sgmodule"] = render_module(
-            catalog.name, "experimental", catalog.rules, disabled_rule_ids
-        )
-    outputs[DIST_DIR / "canary" / "all.sgmodule"] = render_module(
-        "五 App 合集", "stable", all_rules, disabled_rule_ids
-    )
-    return outputs
+        for app_id in APP_ORDER
+    }
 
 
 def validate_module_text(path: Path, content: str) -> list[str]:
-    """Validate the generated conservative module subset line by line."""
     errors: list[str] = []
     lines = content.splitlines()
     if not lines or not lines[0].startswith("#!name="):
@@ -398,17 +317,13 @@ def validate_module_text(path: Path, content: str) -> list[str]:
             continue
         if line.startswith("[") and line.endswith("]"):
             current_section = line[1:-1]
-            if current_section not in {"Rule", "URL Rewrite", "Script", "MITM"}:
+            if current_section not in {"URL Rewrite", "Script", "MITM"}:
                 errors.append(f"{path}:{number}: unsupported section {current_section}")
             if current_section in seen_sections:
                 errors.append(f"{path}:{number}: duplicate section {current_section}")
             seen_sections.add(current_section)
             continue
-        if current_section == "Rule":
-            parts = [part.strip() for part in line.split(",")]
-            if len(parts) != 3 or parts[0] != "DOMAIN" or parts[2] != "REJECT":
-                errors.append(f"{path}:{number}: invalid stable rule line")
-        elif current_section == "URL Rewrite":
+        if current_section == "URL Rewrite":
             if " - " not in line:
                 errors.append(f"{path}:{number}: invalid URL Rewrite line")
                 continue
@@ -444,15 +359,12 @@ def validate_module_text(path: Path, content: str) -> list[str]:
                 errors.append(f"{path}:{number}: invalid MITM declaration")
         else:
             errors.append(f"{path}:{number}: content outside a section")
-    if "canary" in path.parts and seen_sections != {"Rule"}:
-        errors.append(f"{path}: canary module must contain only [Rule]")
-    if "experimental" in path.parts:
-        if "Rule" in seen_sections:
-            errors.append(f"{path}: experimental module cannot contain [Rule]")
-        if not ({"URL Rewrite", "Script"} & seen_sections):
-            errors.append(f"{path}: missing [URL Rewrite] or [Script]")
-        if "MITM" not in seen_sections and "#!rule-count=0" not in content:
-            errors.append(f"{path}: active experimental module requires [MITM]")
+    if not ({"URL Rewrite", "Script"} & seen_sections):
+        errors.append(f"{path}: missing [URL Rewrite] or [Script]")
+    if "MITM" not in seen_sections:
+        errors.append(f"{path}: app module requires [MITM]")
+    if "[Rule]" in content or "RULE-SET," in content or "DOMAIN-SET," in content:
+        errors.append(f"{path}: app module must not embed general rule sets")
     return errors
 
 
@@ -466,101 +378,14 @@ def write_or_check_outputs(outputs: dict[Path, str], check: bool) -> list[str]:
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8", newline="\n")
-    for directory in (DIST_DIR / "canary", DIST_DIR / "experimental"):
-        if directory.exists():
-            for path in directory.glob("*.sgmodule"):
-                if path not in expected_paths:
-                    if check:
-                        mismatches.append(str(path.relative_to(ROOT)))
-                    else:
-                        path.unlink()
+    if DIST_DIR.exists():
+        for path in DIST_DIR.glob("*.sgmodule"):
+            if path not in expected_paths:
+                if check:
+                    mismatches.append(str(path.relative_to(ROOT)))
+                else:
+                    path.unlink()
     return sorted(set(mismatches))
-
-
-def validation_report(catalogs: list[AppCatalog]) -> dict[str, Any]:
-    apps: list[dict[str, Any]] = []
-    for catalog in catalogs:
-        rules = []
-        for rule in catalog.rules:
-            rules.append(
-                {
-                    "id": rule["id"],
-                    "tier": rule["tier"],
-                    "syntax_status": "passed",
-                    "source_status": rule["source_status"],
-                    "device_status": rule["device_status"],
-                    "risk": rule["risk"],
-                }
-            )
-        apps.append({"id": catalog.app_id, "name": catalog.name, "rules": rules})
-    return {
-        "schema_version": 1,
-        "notice": "Static syntax pass does not prove Shadowrocket import or ad blocking.",
-        "apps": apps,
-    }
-
-
-def check_promotion(catalogs: list[AppCatalog]) -> list[str]:
-    """Require a matching privacy-safe device record for every stable rule."""
-    errors: list[str] = []
-    records: dict[str, dict[str, Any]] = {}
-    verification_dir = ROOT / "verifications"
-    for path in sorted(verification_dir.glob("*.json")):
-        if path.name == "template.json":
-            continue
-        data = read_json(path)
-        rule_id = data.get("rule_id")
-        if not isinstance(rule_id, str):
-            errors.append(f"{path}: missing rule_id")
-            continue
-        if rule_id in records:
-            errors.append(f"{path}: duplicate verification for {rule_id}")
-        records[rule_id] = data
-
-    for catalog in catalogs:
-        for rule in catalog.rules:
-            if rule["tier"] != "stable":
-                continue
-            if rule["device_status"] != "passed":
-                errors.append(f"{rule['id']}: stable promotion requires device_status=passed")
-            record = records.get(rule["id"])
-            if not record:
-                errors.append(f"{rule['id']}: missing device verification record")
-                continue
-            if record.get("result") != "passed":
-                errors.append(f"{rule['id']}: verification result is not passed")
-            privacy = record.get("privacy", {})
-            privacy_keys = {
-                "contains_headers",
-                "contains_query_values",
-                "contains_bodies",
-                "contains_identifiers",
-            }
-            missing_privacy = privacy_keys - set(privacy)
-            unsafe = [key for key in privacy_keys if privacy.get(key) is not False]
-            if missing_privacy:
-                errors.append(
-                    f"{rule['id']}: missing privacy declarations: {', '.join(sorted(missing_privacy))}"
-                )
-            if unsafe:
-                errors.append(
-                    f"{rule['id']}: privacy declaration is incomplete/unsafe: {', '.join(unsafe)}"
-                )
-    return errors
-
-
-def write_checksums(output: Path) -> int:
-    paths = sorted((DIST_DIR / "canary").glob("*.sgmodule"))
-    if not paths:
-        print("No canary modules found; run build first.", file=sys.stderr)
-        return 1
-    lines = []
-    for path in paths:
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        lines.append(f"{digest}  {path.name}")
-    output.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
-    print(f"Wrote {output.relative_to(ROOT)}")
-    return 0
 
 
 def audit_sources(output: Path) -> int:
@@ -572,7 +397,7 @@ def audit_sources(output: Path) -> int:
         result = {"id": source["id"], "url": source["url"], "status": "unknown"}
         try:
             request = urllib.request.Request(
-                source["url"], headers={"User-Agent": "NoAd-source-audit/0.1"}
+                source["url"], headers={"User-Agent": "NoAd-source-audit/0.2"}
             )
             with urllib.request.urlopen(request, timeout=30) as response:
                 body = response.read()
@@ -606,28 +431,25 @@ def audit_sources(output: Path) -> int:
 
 def command_validate() -> int:
     catalogs = load_catalogs()
-    disabled = load_disabled_rule_ids()
-    errors = validate_catalogs(catalogs, disabled)
+    errors = validate_catalogs(catalogs)
     if not errors:
-        for path, content in build_outputs(catalogs, disabled).items():
+        for path, content in build_outputs(catalogs).items():
             errors.extend(validate_module_text(path, content))
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
-    print(f"Validated {sum(len(item.rules) for item in catalogs)} rules across {len(catalogs)} apps.")
+    print(
+        f"Validated {sum(len(item.rules) for item in catalogs)} app-specific rules "
+        f"across {len(catalogs)} apps."
+    )
     return 0
 
 
 def command_build(check: bool) -> int:
     catalogs = load_catalogs()
-    disabled = load_disabled_rule_ids()
-    errors = validate_catalogs(catalogs, disabled)
-    if errors:
-        for error in errors:
-            print(f"ERROR: {error}", file=sys.stderr)
-        return 1
-    outputs = build_outputs(catalogs, disabled)
+    errors = validate_catalogs(catalogs)
+    outputs = build_outputs(catalogs) if not errors else {}
     for path, content in outputs.items():
         errors.extend(validate_module_text(path, content))
     if errors:
@@ -641,48 +463,18 @@ def command_build(check: bool) -> int:
             print(f"  {mismatch}", file=sys.stderr)
         return 1
     verb = "Checked" if check else "Wrote"
-    print(f"{verb} {len(outputs)} Shadowrocket modules.")
-    return 0
-
-
-def command_report(output: Path) -> int:
-    catalogs = load_catalogs()
-    disabled = load_disabled_rule_ids()
-    errors = validate_catalogs(catalogs, disabled)
-    if errors:
-        for error in errors:
-            print(f"ERROR: {error}", file=sys.stderr)
-        return 1
-    report = validation_report(catalogs)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-        newline="\n",
-    )
-    print(f"Wrote {output.relative_to(ROOT)}")
+    print(f"{verb} {len(outputs)} app-specific Shadowrocket modules.")
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
-    subparsers.add_parser("validate", help="validate rule catalogs")
-    build = subparsers.add_parser("build", help="build deterministic modules")
+    subparsers.add_parser("validate", help="validate app-specific rule catalogs")
+    build = subparsers.add_parser("build", help="build deterministic app modules")
     build.add_argument("--check", action="store_true", help="check outputs without writing")
-    report = subparsers.add_parser("report", help="write validation status report")
-    report.add_argument(
-        "--output", type=Path, default=ROOT / "dist" / "status.json"
-    )
     audit = subparsers.add_parser("audit-sources", help="download and hash source material")
     audit.add_argument("--output", type=Path, default=ROOT / "source-audit.json")
-    subparsers.add_parser(
-        "check-promotion", help="require device evidence for all stable rules"
-    )
-    checksums = subparsers.add_parser("checksums", help="hash stable modules")
-    checksums.add_argument(
-        "--output", type=Path, default=ROOT / "dist" / "SHA256SUMS"
-    )
     return parser
 
 
@@ -692,24 +484,10 @@ def main(argv: list[str] | None = None) -> int:
         return command_validate()
     if args.command == "build":
         return command_build(args.check)
-    if args.command == "report":
-        return command_report(args.output)
     if args.command == "audit-sources":
         return audit_sources(args.output)
-    if args.command == "check-promotion":
-        catalogs = load_catalogs()
-        errors = check_promotion(catalogs)
-        if errors:
-            for error in errors:
-                print(f"ERROR: {error}", file=sys.stderr)
-            return 1
-        print("Stable promotion gate passed.")
-        return 0
-    if args.command == "checksums":
-        return write_checksums(args.output)
     raise AssertionError(args.command)
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
