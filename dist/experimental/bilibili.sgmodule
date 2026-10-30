@@ -9,9 +9,9 @@
 # WARNING: 本模块需要 HTTPS 解密，默认不得启用。
 # 仅在阅读风险说明并准备完成真机回归后安装。
 
-[URL Rewrite]
-# bilibili.splash.v2 | 阻断 v2 开屏广告配置响应 | risk=medium | device=unverified
-^https?:\/\/app\.bilibili\.com\/x\/v2\/splash\/(?:show|list)(?:\?|$) - reject-dict
+[Script]
+# bilibili.splash.v2 | 清空 v2 开屏广告列表与客户端缓存保留列表 | risk=medium | device=unverified
+NoAd_BiliBili_开屏广告清理 = type=http-response,requires-body=1,max-size=1048576,pattern=^https?:\/\/app\.bilibili\.com\/x\/v2\/splash\/(?:show|list)(?:\?|$),script-path=https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/runtime/bilibili-splash.js
 
 [MITM]
 hostname = %APPEND% app.bilibili.com

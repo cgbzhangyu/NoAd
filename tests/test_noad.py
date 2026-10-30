@@ -44,6 +44,37 @@ class CatalogTests(unittest.TestCase):
             errors.extend(noad.validate_module_text(path, content))
         self.assertEqual([], errors)
 
+    def test_bilibili_uses_owned_response_script_instead_of_reject_dict(self) -> None:
+        outputs = noad.build_outputs(self.catalogs, self.disabled)
+        path = noad.DIST_DIR / "experimental" / "bilibili.sgmodule"
+        content = outputs[path]
+        self.assertIn("[Script]", content)
+        self.assertNotIn("[URL Rewrite]", content)
+        self.assertIn("type=http-response", content)
+        self.assertIn(
+            "https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/"
+            "runtime/bilibili-splash.js",
+            content,
+        )
+        self.assertNotIn("reject-dict", content)
+
+    def test_bilibili_runtime_script_has_no_logging_or_network_calls(self) -> None:
+        script = (noad.ROOT / "runtime" / "bilibili-splash.js").read_text(
+            encoding="utf-8"
+        )
+        for forbidden in (
+            "console.",
+            "$notification",
+            "$notify",
+            "$httpClient",
+            "$task.fetch",
+            "$request.url",
+            "access_key",
+        ):
+            self.assertNotIn(forbidden, script)
+        for field in ("max_time", "keep_ids", "list", "show"):
+            self.assertIn(field, script)
+
     def test_allowlist_omits_rule_without_forcing_direct(self) -> None:
         content = noad.render_module(
             "测试",

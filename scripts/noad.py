@@ -29,10 +29,14 @@ DIST_DIR = ROOT / "dist"
 
 APP_ORDER = ("bilibili", "xiachufang", "taobao", "jd", "smzdm")
 TIERS = {"stable", "experimental"}
-SECTIONS = {"Rule", "URL Rewrite"}
+SECTIONS = {"Rule", "URL Rewrite", "Script"}
 SAFE_RULE_DIRECTIVES = {"DOMAIN"}
 SAFE_ACTIONS = {"REJECT"}
 REWRITE_ACTIONS = {"reject", "reject-200", "reject-dict", "reject-array"}
+SCRIPT_ACTIONS = {"http-response"}
+OWNED_SCRIPT_PREFIX = (
+    "https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/runtime/"
+)
 SENSITIVE_TOKENS = {
     "account",
     "auth",
@@ -205,7 +209,7 @@ def validate_catalogs(
                         raise ValidationError(f"{context}: Rule entries belong in stable tier")
                     if rule.get("mitm_hosts"):
                         raise ValidationError(f"{context}: stable rule cannot declare MITM")
-                else:
+                elif rule["section"] == "URL Rewrite":
                     if rule["tier"] != "experimental":
                         raise ValidationError(f"{context}: rewrites must be experimental")
                     if rule["action"] not in REWRITE_ACTIONS:
@@ -213,6 +217,49 @@ def validate_catalogs(
                     hosts = rule.get("mitm_hosts")
                     if not isinstance(hosts, list) or not hosts:
                         raise ValidationError(f"{context}: rewrite requires MITM hosts")
+                    for host in hosts:
+                        if host in BANNED_MITM_HOSTS:
+                            raise ValidationError(f"{context}: unsafe MITM host {host}")
+                        if any(token in host.lower() for token in SENSITIVE_TOKENS):
+                            raise ValidationError(f"{context}: sensitive MITM host {host}")
+                    re.compile(rule["match"])
+                    for example in rule.get("match_examples", []):
+                        if re.search(rule["match"], example) is None:
+                            raise ValidationError(
+                                f"{context}: regex does not match example {example}"
+                            )
+                else:
+                    if rule["tier"] != "experimental":
+                        raise ValidationError(f"{context}: scripts must be experimental")
+                    if rule["action"] not in SCRIPT_ACTIONS:
+                        raise ValidationError(f"{context}: unsupported script action")
+                    _require(
+                        rule,
+                        ("script_name", "script_path", "requires_body", "max_size"),
+                        context,
+                    )
+                    script_name = rule["script_name"]
+                    if (
+                        not isinstance(script_name, str)
+                        or not script_name.strip()
+                        or any(token in script_name for token in ("=", ",", "\n", "\r"))
+                    ):
+                        raise ValidationError(f"{context}: invalid script_name")
+                    if not str(rule["script_path"]).startswith(OWNED_SCRIPT_PREFIX):
+                        raise ValidationError(
+                            f"{context}: script_path must use the owned runtime directory"
+                        )
+                    if rule["requires_body"] is not True:
+                        raise ValidationError(f"{context}: response script requires body")
+                    if (
+                        not isinstance(rule["max_size"], int)
+                        or isinstance(rule["max_size"], bool)
+                        or rule["max_size"] <= 0
+                    ):
+                        raise ValidationError(f"{context}: max_size must be a positive integer")
+                    hosts = rule.get("mitm_hosts")
+                    if not isinstance(hosts, list) or not hosts:
+                        raise ValidationError(f"{context}: script requires MITM hosts")
                     for host in hosts:
                         if host in BANNED_MITM_HOSTS:
                             raise ValidationError(f"{context}: unsafe MITM host {host}")
@@ -285,17 +332,31 @@ def render_module(
             [
                 "# WARNING: 本模块需要 HTTPS 解密，默认不得启用。",
                 "# 仅在阅读风险说明并准备完成真机回归后安装。",
-                "",
-                "[URL Rewrite]",
             ]
         )
         if not active:
-            lines.append("# 当前没有实验规则")
-        for rule in active:
-            lines.append(
-                f"# {rule['id']} | {rule['purpose']} | risk={rule['risk']} | device={rule['device_status']}"
-            )
-            lines.append(f"{rule['match']} - {rule['action']}")
+            lines.extend(["", "[URL Rewrite]", "# 当前没有实验规则"])
+        rewrites = [rule for rule in active if rule["section"] == "URL Rewrite"]
+        scripts = [rule for rule in active if rule["section"] == "Script"]
+        if rewrites:
+            lines.extend(["", "[URL Rewrite]"])
+            for rule in rewrites:
+                lines.append(
+                    f"# {rule['id']} | {rule['purpose']} | risk={rule['risk']} | device={rule['device_status']}"
+                )
+                lines.append(f"{rule['match']} - {rule['action']}")
+        if scripts:
+            lines.extend(["", "[Script]"])
+            for rule in scripts:
+                lines.append(
+                    f"# {rule['id']} | {rule['purpose']} | risk={rule['risk']} | device={rule['device_status']}"
+                )
+                lines.append(
+                    f"{rule['script_name']} = type={rule['action']},"
+                    f"requires-body={1 if rule['requires_body'] else 0},"
+                    f"max-size={rule['max_size']},pattern={rule['match']},"
+                    f"script-path={rule['script_path']}"
+                )
         hosts = sorted({host for rule in active for host in rule.get("mitm_hosts", [])})
         if hosts:
             lines.extend(["", "[MITM]", f"hostname = %APPEND% {','.join(hosts)}"])
@@ -337,7 +398,7 @@ def validate_module_text(path: Path, content: str) -> list[str]:
             continue
         if line.startswith("[") and line.endswith("]"):
             current_section = line[1:-1]
-            if current_section not in {"Rule", "URL Rewrite", "MITM"}:
+            if current_section not in {"Rule", "URL Rewrite", "Script", "MITM"}:
                 errors.append(f"{path}:{number}: unsupported section {current_section}")
             if current_section in seen_sections:
                 errors.append(f"{path}:{number}: duplicate section {current_section}")
@@ -358,6 +419,26 @@ def validate_module_text(path: Path, content: str) -> list[str]:
                 re.compile(pattern)
             except re.error as exc:
                 errors.append(f"{path}:{number}: invalid regex: {exc}")
+        elif current_section == "Script":
+            script_match = re.fullmatch(
+                r"([^=,]+) = type=(http-response),requires-body=1,max-size=(\d+),"
+                r"pattern=(.+),script-path=(https://\S+)",
+                line,
+            )
+            if not script_match:
+                errors.append(f"{path}:{number}: invalid Script line")
+                continue
+            _, action, max_size, pattern, script_path = script_match.groups()
+            if action not in SCRIPT_ACTIONS:
+                errors.append(f"{path}:{number}: invalid script action {action}")
+            if int(max_size) <= 0:
+                errors.append(f"{path}:{number}: invalid script max-size")
+            if not script_path.startswith(OWNED_SCRIPT_PREFIX):
+                errors.append(f"{path}:{number}: unowned script path")
+            try:
+                re.compile(pattern)
+            except re.error as exc:
+                errors.append(f"{path}:{number}: invalid script regex: {exc}")
         elif current_section == "MITM":
             if not line.startswith("hostname = %APPEND% "):
                 errors.append(f"{path}:{number}: invalid MITM declaration")
@@ -368,8 +449,10 @@ def validate_module_text(path: Path, content: str) -> list[str]:
     if "experimental" in path.parts:
         if "Rule" in seen_sections:
             errors.append(f"{path}: experimental module cannot contain [Rule]")
-        if "URL Rewrite" not in seen_sections:
-            errors.append(f"{path}: missing [URL Rewrite]")
+        if not ({"URL Rewrite", "Script"} & seen_sections):
+            errors.append(f"{path}: missing [URL Rewrite] or [Script]")
+        if "MITM" not in seen_sections and "#!rule-count=0" not in content:
+            errors.append(f"{path}: active experimental module requires [MITM]")
     return errors
 
 

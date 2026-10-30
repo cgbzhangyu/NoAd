@@ -30,10 +30,14 @@
     {
       "id": "bilibili.splash.v2",
       "tier": "experimental",
-      "section": "URL Rewrite",
+      "section": "Script",
       "match": "^https?:\\/\\/app\\.bilibili\\.com\\/x\\/v2\\/splash\\/(?:show|list)(?:\\?|$)",
-      "action": "reject-dict",
-      "purpose": "阻断 v2 开屏广告配置响应",
+      "action": "http-response",
+      "script_name": "NoAd_BiliBili_开屏广告清理",
+      "script_path": "https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/runtime/bilibili-splash.js",
+      "requires_body": true,
+      "max_size": 1048576,
+      "purpose": "清空 v2 开屏广告列表与客户端缓存保留列表",
       "risk": "medium",
       "source_status": "supported",
       "device_status": "unverified",
@@ -48,7 +52,7 @@
           "url": "https://github.com/blackmatrix7/ios_rule_script/blob/master/script/startup/startup.sgmodule",
           "license": "GPL-2.0-only",
           "usage": "derived",
-          "notes": "Only the endpoint pattern is retained; the upstream response script is not imported."
+          "notes": "Only the endpoint pattern is retained; NoAd uses an independently implemented, repository-owned response filter."
         }
       ]
     }

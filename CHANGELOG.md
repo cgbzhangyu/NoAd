@@ -11,4 +11,5 @@ All notable changes are recorded here. Versions follow Semantic Versioning.
 - Separate stable and experimental output channels.
 - Source, syntax and device-verification status reporting.
 - CI, upstream audit, release promotion and rollback foundations.
+- Repository-owned Bilibili splash response filter that clears ad and cache-retention lists without logging request data.
 
