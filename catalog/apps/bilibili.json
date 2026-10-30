@@ -18,7 +18,7 @@
       "purpose": "清空 v2 开屏广告列表与客户端缓存保留列表",
       "risk": "medium",
       "source_status": "supported",
-      "device_status": "unverified",
+      "device_status": "passed",
       "mitm_hosts": ["app.bilibili.com"],
       "match_examples": [
         "https://app.bilibili.com/x/v2/splash/show?access_key=REDACTED",

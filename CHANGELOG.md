@@ -10,6 +10,7 @@ All notable changes are recorded here. Versions follow Semantic Versioning.
 - Generated modules are published only under `dist/apps/`.
 - General advertising is documented as direct upstream `Advertising.list` and `Advertising_Domain.list` references.
 - Bilibili splash blocking uses the repository-owned response filter that clears ad and cache-retention lists without logging request data.
+- Device verification passed for Bilibili, Taobao and JD; the SMZDM rule remains available with a failed status for further diagnosis.
 
 ### Removed
 

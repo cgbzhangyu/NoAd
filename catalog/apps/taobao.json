@@ -14,7 +14,7 @@
       "purpose": "阻断明确命名的广告服务接口；不宣称覆盖开屏",
       "risk": "high",
       "source_status": "supported",
-      "device_status": "unverified",
+      "device_status": "passed",
       "mitm_hosts": ["acs.m.taobao.com"],
       "match_examples": [
         "https://acs.m.taobao.com/gw/mtop.alibaba.advertisementservice.getadv/1.0/?data=REDACTED"

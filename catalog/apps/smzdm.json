@@ -10,11 +10,11 @@
       "id": "smzdm.third-ad",
       "section": "URL Rewrite",
       "match": "^https?:\\/\\/s\\d+\\.zdmimg\\.com\\/www\\/api\\/v\\d+\\/api\\/thirdAd\\.php(?:\\?|$)",
-      "action": "reject-dict",
+      "action": "reject",
       "purpose": "阻断第三方广告接口",
       "risk": "high",
       "source_status": "supported",
-      "device_status": "unverified",
+      "device_status": "failed",
       "mitm_hosts": ["s*.zdmimg.com"],
       "match_examples": ["https://s3.zdmimg.com/www/api/v1/api/thirdAd.php?position=home"],
       "evidence": [

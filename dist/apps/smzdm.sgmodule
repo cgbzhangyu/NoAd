@@ -10,8 +10,8 @@
 # 仅解密下方 [MITM] 中列出的目标 App 主机。
 
 [URL Rewrite]
-# smzdm.third-ad | 阻断第三方广告接口 | risk=high | device=unverified
-^https?:\/\/s\d+\.zdmimg\.com\/www\/api\/v\d+\/api\/thirdAd\.php(?:\?|$) - reject-dict
+# smzdm.third-ad | 阻断第三方广告接口 | risk=high | device=failed
+^https?:\/\/s\d+\.zdmimg\.com\/www\/api\/v\d+\/api\/thirdAd\.php(?:\?|$) - reject
 
 [MITM]
 hostname = %APPEND% s*.zdmimg.com

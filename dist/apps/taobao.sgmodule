@@ -10,7 +10,7 @@
 # 仅解密下方 [MITM] 中列出的目标 App 主机。
 
 [URL Rewrite]
-# taobao.advertisementservice.getadv | 阻断明确命名的广告服务接口；不宣称覆盖开屏 | risk=high | device=unverified
+# taobao.advertisementservice.getadv | 阻断明确命名的广告服务接口；不宣称覆盖开屏 | risk=high | device=passed
 ^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.alibaba\.advertisementservice\.getadv(?:\/|\?|$) - reject-dict
 
 [MITM]

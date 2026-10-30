@@ -10,9 +10,9 @@
 # 仅解密下方 [MITM] 中列出的目标 App 主机。
 
 [URL Rewrite]
-# jd.launch.client-action | 阻断公开来源记录的开屏配置接口 | risk=high | device=unverified
+# jd.launch.client-action | 阻断公开来源记录的开屏配置接口 | risk=high | device=passed
 ^https?:\/\/api\.m\.jd\.com\/client\.action\?functionId=(?:home_launchConfig|start)(?:&|$) - reject-dict
-# jd.adx.hosts | 阻断京东广告交换路径 | risk=medium | device=unverified
+# jd.adx.hosts | 阻断京东广告交换路径 | risk=medium | device=passed
 ^https?:\/\/(?:bdsp-x|dsp-x)\.jd\.com\/adx\/ - reject
 
 [MITM]
