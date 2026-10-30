@@ -4,14 +4,18 @@
 #!homepage=https://github.com/cgbzhangyu/NoAd
 #!category=广告拦截
 #!system=ios
-#!rule-count=1
+#!rule-count=2
 
 # WARNING: 本模块需要 HTTPS 解密和系统信任 Shadowrocket CA。
 # 仅解密下方 [MITM] 中列出的目标 App 主机。
 
 [URL Rewrite]
-# smzdm.third-ad | 阻断第三方广告接口 | risk=high | device=failed
+# smzdm.third-ad | 阻断旧版第三方广告接口 | risk=high | device=failed
 ^https?:\/\/s\d+\.zdmimg\.com\/www\/api\/v\d+\/api\/thirdAd\.php(?:\?|$) - reject
 
+[Script]
+# smzdm.splash.loading | 清空什么值得买开屏配置，避免继续缓存同一广告素材 | risk=medium | device=unverified
+NoAd_SMZDM_开屏广告清理 = type=http-response,requires-body=1,max-size=1048576,pattern=^https?:\/\/app-api\.smzdm\.com\/util\/loading(?:\?|$),script-path=https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/runtime/smzdm-splash.js
+
 [MITM]
-hostname = %APPEND% s*.zdmimg.com
+hostname = %APPEND% app-api.smzdm.com,s*.zdmimg.com

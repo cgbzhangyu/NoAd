@@ -11,6 +11,7 @@ All notable changes are recorded here. Versions follow Semantic Versioning.
 - General advertising is documented as direct upstream `Advertising.list` and `Advertising_Domain.list` references.
 - Bilibili splash blocking uses the repository-owned response filter that clears ad and cache-retention lists without logging request data.
 - Device verification passed for Bilibili, Taobao and JD; the SMZDM rule remains available with a failed status for further diagnosis.
+- SMZDM now clears the `/util/loading` splash response with a repository-owned minimal filter so cached startup ads can expire.
 
 ### Removed
 

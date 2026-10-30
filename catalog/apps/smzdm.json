@@ -7,11 +7,36 @@
   },
   "rules": [
     {
+      "id": "smzdm.splash.loading",
+      "section": "Script",
+      "match": "^https?:\\/\\/app-api\\.smzdm\\.com\\/util\\/loading(?:\\?|$)",
+      "action": "http-response",
+      "script_name": "NoAd_SMZDM_开屏广告清理",
+      "script_path": "https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/runtime/smzdm-splash.js",
+      "requires_body": true,
+      "max_size": 1048576,
+      "purpose": "清空什么值得买开屏配置，避免继续缓存同一广告素材",
+      "risk": "medium",
+      "source_status": "supported",
+      "device_status": "unverified",
+      "mitm_hosts": ["app-api.smzdm.com"],
+      "match_examples": ["https://app-api.smzdm.com/util/loading"],
+      "evidence": [
+        {
+          "project": "blackmatrix7/ios_rule_script",
+          "url": "https://github.com/blackmatrix7/ios_rule_script/blob/master/script/archive/smzdm/smzdm_remove_ads.sgmodule",
+          "license": "GPL-2.0-only",
+          "usage": "derived",
+          "notes": "Only the endpoint and response field behavior are retained; NoAd uses a repository-owned minimal response filter."
+        }
+      ]
+    },
+    {
       "id": "smzdm.third-ad",
       "section": "URL Rewrite",
       "match": "^https?:\\/\\/s\\d+\\.zdmimg\\.com\\/www\\/api\\/v\\d+\\/api\\/thirdAd\\.php(?:\\?|$)",
       "action": "reject",
-      "purpose": "阻断第三方广告接口",
+      "purpose": "阻断旧版第三方广告接口",
       "risk": "high",
       "source_status": "supported",
       "device_status": "failed",

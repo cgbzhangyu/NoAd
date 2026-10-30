@@ -74,6 +74,32 @@ class CatalogTests(unittest.TestCase):
         for field in ("max_time", "keep_ids", "list", "show"):
             self.assertIn(field, script)
 
+    def test_smzdm_uses_owned_splash_response_script(self) -> None:
+        outputs = noad.build_outputs(self.catalogs)
+        content = outputs[noad.DIST_DIR / "smzdm.sgmodule"]
+        self.assertIn("app-api\\.smzdm\\.com\\/util\\/loading", content)
+        self.assertIn("type=http-response", content)
+        self.assertIn(
+            "https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/"
+            "runtime/smzdm-splash.js",
+            content,
+        )
+
+    def test_smzdm_runtime_script_has_no_logging_or_network_calls(self) -> None:
+        script = (noad.ROOT / "runtime" / "smzdm-splash.js").read_text(
+            encoding="utf-8"
+        )
+        for forbidden in (
+            "console.",
+            "$notification",
+            "$notify",
+            "$httpClient",
+            "$task.fetch",
+            "$request",
+        ):
+            self.assertNotIn(forbidden, script)
+        self.assertIn('delete payload.data', script)
+
     def test_duplicate_rule_id_is_rejected(self) -> None:
         copied = copy.deepcopy(self.catalogs)
         duplicate = copy.deepcopy(copied[0].data["rules"][0])

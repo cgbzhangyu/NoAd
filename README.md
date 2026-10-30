@@ -28,7 +28,7 @@ DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master
 | 下厨房 | [xiachufang.sgmodule](https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/dist/apps/xiachufang.sgmodule) | 广告 API |
 | 淘宝 | [taobao.sgmodule](https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/dist/apps/taobao.sgmodule) | 广告服务接口 |
 | 京东 | [jd.sgmodule](https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/dist/apps/jd.sgmodule) | 开屏配置与广告交换路径 |
-| 什么值得买 | [smzdm.sgmodule](https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/dist/apps/smzdm.sgmodule) | 第三方广告接口（当前真机验证失败，保留用于排查） |
+| 什么值得买 | [smzdm.sgmodule](https://raw.githubusercontent.com/cgbzhangyu/NoAd/refs/heads/main/dist/apps/smzdm.sgmodule) | 开屏响应清理与旧版第三方广告接口（待复测） |
 
 旧的 `dist/experimental/`、`dist/canary/` 和 `all.sgmodule` 已取消。之前安装过旧地址的模块，需要删除后用上表的新地址重新添加。
 
